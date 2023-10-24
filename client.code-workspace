@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "neopixel_udp_client"
+		},
+		{
+			"path": "libraries"
+		}
+	],
+	"settings": {}
+}
