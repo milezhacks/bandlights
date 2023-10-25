@@ -1,7 +1,7 @@
 #include <CRC32.h>
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
-#include <Effect.h>
+#include "Effect/Effect.h"
 #include <WiFiUdp.h>
 #include <arduino-timer.h>
 
@@ -43,9 +43,20 @@ void hw_wdt_enable() {
     *((volatile uint32_t*)0x60000900) |= 1;  // Hardware WDT ON
 }
 
-// int send_mcast(uint8_t *pData, size_t len);
 static RifleFX riflefx;
 static PoleFX polefx;
+
+int send_mcast(uint8_t *pData, size_t len) {
+    int ret;
+    static const IPAddress mcastaddr = IPAddress(10, 0, 0, 255);
+    static const IPAddress unicast = IPAddress(10, 0, 0, 100);
+
+    ret = UDP.beginPacketMulticast(mcastaddr, UDP_PORT, WiFi.softAPIP(), 2);
+    UDP.write(pData, len);
+    ret = UDP.endPacket();
+    Serial.print("UDP.endPacket ");
+    return ret;
+}
 
 bool send_config(void*) {
     int ret;
@@ -106,18 +117,6 @@ void setup() {
 
 
 
-}
-
-int send_mcast(uint8_t *pData, size_t len) {
-    int ret;
-    static const IPAddress mcastaddr = IPAddress(10, 0, 0, 255);
-    static const IPAddress unicast = IPAddress(10, 0, 0, 100);
-
-    ret = UDP.beginPacketMulticast(mcastaddr, UDP_PORT, WiFi.softAPIP(), 2);
-    UDP.write(pData, len);
-    ret = UDP.endPacket();
-    Serial.print("UDP.endPacket ");
-    return ret;
 }
 
 void loop() { 

@@ -1,9 +1,6 @@
 {
 	"folders": [
 		{
-			"path": "udp_server"
-		},
-		{
 			"path": "libraries"
 		}
 	],

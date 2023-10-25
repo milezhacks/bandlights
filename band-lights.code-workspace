@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "light-server"
+		},
+		{
+			"path": "libraries"
+		},
+		{
+			"path": "light-client"
+		}
+	],
+	"settings": {}
+}

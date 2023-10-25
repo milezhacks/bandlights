@@ -4,7 +4,7 @@
 #include <WiFiUdp.h>
 #include <arduino-timer.h>
 #include <user_interface.h>
-#include <Effect.h>
+#include <Effect/Effect.h>
 
 auto timer = timer_create_default();
 
@@ -44,16 +44,13 @@ IPAddress setupWifi() {
     static const char* password = "GoRockBand!";
     int retries = 50;
 
+    Serial.print("Connecting to: ");
+    Serial.println(ssid);
+
     WiFi.mode(WIFI_STA);
     wifi_set_sleep_type(NONE_SLEEP_T);
     WiFi.begin(ssid, password);
-    Serial.print("Connecting to: ");
-    Serial.print(ssid);
-    // Loop continuously while WiFi is not connected
-    while ((WiFi.status() != WL_CONNECTED) && retries--) {
-        delay(100);
-        Serial.print(".");
-    }
+
     if (WiFi.status() == WL_CONNECTED) {
         Serial.print("\nIP address: ");
         Serial.println(WiFi.localIP());
@@ -90,17 +87,36 @@ void setupSerial() {
 
 bool check_wifi(void*) {
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.print("WiFi disconnected");
+        Serial.println("WiFi disconnected");
         setupWifi();
         setupUDP();
     }
+    timer.in(5000, check_wifi);;
     return true;
 }
 
+uint32_t status_pixel_color;
+int show_status = 1;
+
+//
+// show the status LED with a 10% duty cycle
+//
 bool toggle_led(void*) {
-    static int state = 1;
-    digitalWrite(STATUS, state);
-    state = state ^ 1;
+    if(show_status) {
+      if (WiFi.status() != WL_CONNECTED) {
+        status_pixel_color = Adafruit_NeoPixel::Color(255,0,255,0);
+      } else {
+        status_pixel_color = Adafruit_NeoPixel::Color(0,255,0,0);
+      }
+      // if we're on, cue ourselves in 100ms
+      timer.in(100, toggle_led);
+    }
+    else
+    {
+      timer.in(900, toggle_led);
+    }
+
+    show_status = show_status ^ 1;
     return true;
 }
 
@@ -113,21 +129,30 @@ uint32_t frame = 0;
 bool update_strip(void*) {
     strip.show(); 
     frame++;
+    timer.in(33, update_strip);
     return true;
 }
+
+PoleFX fx;
+EffectData<NLEDS_POLE> tmpefct;
 
 void setup() {
     pinMode(STATUS, OUTPUT);  // LED pin as output.
 
-    timer.every(5000, check_wifi);
-    timer.every(1000, toggle_led);
-    timer.every(33, update_strip);
+    timer.in(1000, check_wifi);
+    timer.in(1000, toggle_led);
+    timer.in(33, update_strip);
     strip.begin();  // INITIALIZE NeoPixel strip object (REQUIRED)
     strip.setBrightness(BRIGHTNESS);  // Set BRIGHTNESS to about 1/5 (max = 255)
-    strip.fill(strip.Color(0, 0, 0, 0));
-    strip.setPixelColor(255, 0, 0, 0);
+    strip.fill(strip.Color(255, 0, 0, 0));
+    // strip.setPixelColor(255, 0, 0, 0);
     strip.show();  // Turn OFF all pixels ASAP
 
+    for(int i = 0; i < LED_COUNT; i++) {
+      tmpefct.colors[i] = strip.Color(255-LED_COUNT + i, 0, 0, 0);
+    }
+    tmpefct.size = LED_COUNT;
+    
     setupEEPROM();
     setupUDP();
     setupSerial();
@@ -196,8 +221,6 @@ void loop() {
     strip.show();
 }
 #else
-PoleFX fx;
-EffectData<NLEDS_POLE> tmpefct;
 
 void loop() {
     timer.tick();
@@ -208,19 +231,19 @@ void loop() {
         int len = UDP.read((char*)&tmpefct, sizeof(tmpefct));
         Serial.print("UDP Read len ");
         Serial.println(len);
-    }
 
+    }
     // fill the strip with the buffer, rotating based on the frame
     for(int i = 0; i < tmpefct.size; i++) {
         int pxidx = (i+frame) % tmpefct.size;
         strip.setPixelColor(pxidx, tmpefct.colors[i]);
     }
 
-    if (WiFi.status() != WL_CONNECTED) {
-        strip.setPixelColor(0, Adafruit_NeoPixel::Color(255,0,0,0));
-    } else {
-        strip.setPixelColor(0, Adafruit_NeoPixel::Color(0,255,0,0));
+    // only re-paint the status pixel(s) if we're showing status
+    if(show_status) {
+      strip.setPixelColor(1, status_pixel_color);
     }
+      
 }
 #endif
 void FullPower() { strip.fill(0); }
