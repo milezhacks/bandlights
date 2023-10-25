@@ -102,21 +102,23 @@ int show_status = 1;
 // show the status LED with a 10% duty cycle
 //
 bool toggle_led(void*) {
-    if(show_status) {
+    if(!show_status) {
       if (WiFi.status() != WL_CONNECTED) {
-        status_pixel_color = Adafruit_NeoPixel::Color(255,0,255,0);
+        status_pixel_color = Adafruit_NeoPixel::Color(64,0,64,0);
       } else {
-        status_pixel_color = Adafruit_NeoPixel::Color(0,255,0,0);
+        status_pixel_color = Adafruit_NeoPixel::Color(0,64,0,0);
       }
-      // if we're on, cue ourselves in 100ms
-      timer.in(100, toggle_led);
+      show_status = 1;
+      // if we're on, cue ourselves in 200ms so we toggle it
+      timer.in(200, toggle_led);
     }
     else
     {
-      timer.in(900, toggle_led);
+
+      show_status = 0;
+      timer.in(800, toggle_led);
     }
 
-    show_status = show_status ^ 1;
     return true;
 }
 
@@ -152,7 +154,7 @@ void setup() {
       tmpefct.colors[i] = strip.Color(255-LED_COUNT + i, 0, 0, 0);
     }
     tmpefct.size = LED_COUNT;
-    
+
     setupEEPROM();
     setupUDP();
     setupSerial();
