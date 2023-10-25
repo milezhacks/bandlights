@@ -42,7 +42,6 @@ Adafruit_NeoPixel strip(LED_COUNT, LED_DATA_IO, NEO_BRG + NEO_KHZ800);
 IPAddress setupWifi() {
     static const char* ssid = "DragonBand";
     static const char* password = "GoRockBand!";
-    int retries = 50;
 
     Serial.print("Connecting to: ");
     Serial.println(ssid);
@@ -59,7 +58,8 @@ IPAddress setupWifi() {
         Serial.println(WiFi.broadcastIP());
 
         return WiFi.localIP();
-    } else {
+    }
+    else {
         return IPAddress(0, 0, 0, 0);
     }
 }
@@ -102,21 +102,22 @@ int show_status = 1;
 // show the status LED with a 10% duty cycle
 //
 bool toggle_led(void*) {
-    if(!show_status) {
-      if (WiFi.status() != WL_CONNECTED) {
-        status_pixel_color = Adafruit_NeoPixel::Color(64,0,64,0);
-      } else {
-        status_pixel_color = Adafruit_NeoPixel::Color(0,64,0,0);
-      }
-      show_status = 1;
-      // if we're on, cue ourselves in 200ms so we toggle it
-      timer.in(200, toggle_led);
+    if (!show_status) {
+        if (WiFi.status() != WL_CONNECTED) {
+            status_pixel_color = Adafruit_NeoPixel::Color(64, 0, 64, 0);
+        }
+        else {
+            status_pixel_color = Adafruit_NeoPixel::Color(0, 64, 0, 0);
+        }
+        show_status = 1;
+        // if we're on, cue ourselves in 200ms so we toggle it
+        timer.in(200, toggle_led);
     }
     else
     {
 
-      show_status = 0;
-      timer.in(800, toggle_led);
+        show_status = 0;
+        timer.in(800, toggle_led);
     }
 
     return true;
@@ -127,33 +128,47 @@ void setupEEPROM() {
     EEPROM[0];
 }
 
-uint32_t frame = 0;
-bool update_strip(void*) {
-    strip.show(); 
-    frame++;
-    timer.in(33, update_strip);
-    return true;
-}
-
 PoleFX fx;
 EffectData<NLEDS_POLE> tmpefct;
+
+uint32_t frame = 0;
+bool update_strip(void* pCurrentFx) {
+    EffectData<NLEDS_POLE>* pFct = (EffectData<NLEDS_POLE>*)pCurrentFx;
+
+    strip.show();
+    frame++;
+    // @TODO - pull this update interval from the fx 
+    // structure so the lighting effect object can
+    // dictate its own animation speed.
+    timer.in(pFct->frame_period_ms, update_strip, pCurrentFx);
+    Serial.print(".");
+    return true;
+}
 
 void setup() {
     pinMode(STATUS, OUTPUT);  // LED pin as output.
 
-    timer.in(1000, check_wifi);
-    timer.in(1000, toggle_led);
-    timer.in(33, update_strip);
-    strip.begin();  // INITIALIZE NeoPixel strip object (REQUIRED)
-    strip.setBrightness(BRIGHTNESS);  // Set BRIGHTNESS to about 1/5 (max = 255)
-    strip.fill(strip.Color(255, 0, 0, 0));
-    // strip.setPixelColor(255, 0, 0, 0);
-    strip.show();  // Turn OFF all pixels ASAP
-
-    for(int i = 0; i < LED_COUNT; i++) {
-      tmpefct.colors[i] = strip.Color(255-LED_COUNT + i, 0, 0, 0);
+#if 0
+    for (int i = 0; i < LED_COUNT; i++) {
+        tmpefct.colors[i] = strip.Color(255 - LED_COUNT + i, 0, 0, 0);
     }
     tmpefct.size = LED_COUNT;
+#else
+    uint32_t purple = Adafruit_NeoPixel::Color(255, 0, 255, 0);
+    uint32_t yellow = Adafruit_NeoPixel::Color(255, 255, 0, 0);
+    AlternatingColor(tmpefct, purple, 10, yellow, 10);
+    tmpefct.frame_period_ms = ;
+#endif
+
+    // use timer.in() instead of timer.every() so each timer function
+    // can decide what the next interval is.
+    timer.in(1000, check_wifi);
+    timer.in(1000, toggle_led);
+    timer.in(10, update_strip, (void*)&tmpefct);
+    strip.begin();
+    strip.setBrightness(BRIGHTNESS);
+    strip.fill(strip.Color(0, 0, 0, 0));
+    strip.show();  // Turn OFF all pixels ASAP
 
     setupEEPROM();
     setupUDP();
@@ -178,17 +193,23 @@ void loop() {
 
         if (strncmp(pMode, "aniylw", len) == 0) {
             mode = 1;
-        } else if (strncmp(pMode, "white", len) == 0) {
+        }
+        else if (strncmp(pMode, "white", len) == 0) {
             mode = 2;
-        } else if (strncmp(pMode, "red", len) == 0) {
+        }
+        else if (strncmp(pMode, "red", len) == 0) {
             mode = 3;
-        } else if (strncmp(pMode, "green", len) == 0) {
+        }
+        else if (strncmp(pMode, "green", len) == 0) {
             mode = 4;
-        } else if (strncmp(pMode, "blue", len) == 0) {
+        }
+        else if (strncmp(pMode, "blue", len) == 0) {
             mode = 5;
-        } else if (strncmp(pMode, "wob", len) == 0) {
+        }
+        else if (strncmp(pMode, "wob", len) == 0) {
             mode = 6;
-        } else {
+        }
+        else {
             mode = 0;
         }
         Serial.print("Mode: ");
@@ -196,28 +217,29 @@ void loop() {
     }
 
     switch (mode) {
-        case 1:
-            // DB23GuardYellowPurple();
-            break;
-        case 2:
-            FullPower();
-            break;
-        case 3:
-            strip.fill(strip.Color(255, 0, 0));
-            break;
-        case 4:
-            strip.fill(strip.Color(0, 255, 0));
-            break;
-        case 5:
-            strip.fill(strip.Color(0, 0, 255));
-            break;
-        case 6:
-            whiteOverRainbow(75, 5);
-            break;
+    case 1:
+        // DB23GuardYellowPurple();
+        break;
+    case 2:
+        FullPower();
+        break;
+    case 3:
+        strip.fill(strip.Color(255, 0, 0));
+        break;
+    case 4:
+        strip.fill(strip.Color(0, 255, 0));
+        break;
+    case 5:
+        strip.fill(strip.Color(0, 0, 255));
+        break;
+    case 6:
+        whiteOverRainbow(75, 5);
+        break;
     }
     if (WiFi.status() != WL_CONNECTED) {
         strip.setPixelColor(0, 255, 0, 0);
-    } else {
+    }
+    else {
         strip.setPixelColor(0, 0, 255, 0);
     }
     strip.show();
@@ -236,18 +258,20 @@ void loop() {
 
     }
     // fill the strip with the buffer, rotating based on the frame
-    for(int i = 0; i < tmpefct.size; i++) {
-        int pxidx = (i+frame) % tmpefct.size;
+    for (unsigned int i = 0; i < tmpefct.size; i++) {
+        int pxidx = (i + frame) % tmpefct.size;
         strip.setPixelColor(pxidx, tmpefct.colors[i]);
     }
 
     // only re-paint the status pixel(s) if we're showing status
-    if(show_status) {
-      strip.setPixelColor(1, status_pixel_color);
+    if (show_status) {
+        strip.setPixelColor(1, status_pixel_color);
     }
-      
+
 }
 #endif
+
+#if 0
 void FullPower() { strip.fill(0); }
 
 // Fill strip pixels one after another with a color. Strip is NOT cleared
@@ -277,7 +301,8 @@ void whiteOverRainbow(int whiteSpeed, int whiteLength) {
         if (((i >= tail) && (i <= head)) ||        //  If between head & tail...
             ((tail > head) && ((i >= tail) || (i <= head)))) {
             strip.setPixelColor(i, strip.Color(255, 255, 255));  // Set white
-        } else {  // else set rainbow
+        }
+        else {  // else set rainbow
             int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
             strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue)));
         }
@@ -323,9 +348,9 @@ void rainbowFade2White(int wait, int rainbowLoops, int whiteLoops) {
     // just count from 0 to rainbowLoops*65536, using steps of 256 so we
     // advance around the wheel at a decent clip.
     for (uint32_t firstPixelHue = 0; firstPixelHue < rainbowLoops * 65536;
-         firstPixelHue += 256) {
+        firstPixelHue += 256) {
         for (int i = 0; i < strip.numPixels();
-             i++) {  // For each pixel in strip...
+            i++) {  // For each pixel in strip...
 
             // Offset pixel hue by an amount to make one full revolution of the
             // color wheel (range of 65536) along the length of the strip
@@ -339,7 +364,7 @@ void rainbowFade2White(int wait, int rainbowLoops, int whiteLoops) {
             // second value (saturation) is a constant 255.
             strip.setPixelColor(
                 i, strip.gamma32(
-                       strip.ColorHSV(pixelHue, 255, 255 * fadeVal / fadeMax)));
+                    strip.ColorHSV(pixelHue, 255, 255 * fadeVal / fadeMax)));
         }
 
         strip.show();
@@ -347,10 +372,12 @@ void rainbowFade2White(int wait, int rainbowLoops, int whiteLoops) {
 
         if (firstPixelHue < 65536) {           // First loop,
             if (fadeVal < fadeMax) fadeVal++;  // fade in
-        } else if (firstPixelHue >=
-                   ((rainbowLoops - 1) * 65536)) {  // Last loop,
+        }
+        else if (firstPixelHue >=
+            ((rainbowLoops - 1) * 65536)) {  // Last loop,
             if (fadeVal > 0) fadeVal--;             // fade out
-        } else {
+        }
+        else {
             fadeVal = fadeMax;  // Interim loop, make sure fade is at max
         }
     }
@@ -371,3 +398,4 @@ void rainbowFade2White(int wait, int rainbowLoops, int whiteLoops) {
 
     delay(500);  // Pause 1/2 second
 }
+#endif

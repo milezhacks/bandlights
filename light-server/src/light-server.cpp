@@ -83,10 +83,11 @@ bool change_config(void*) {
             config = 3;
             break;
         case 3:
-            DB23GuardYellowPurple(polefx.effect[0]);
+            uint32_t purple = Adafruit_NeoPixel::Color(255, 0, 255, 0);
+            uint32_t yellow = Adafruit_NeoPixel::Color(255, 255, 0, 0);
+            AlternatingColor(polefx.effect[0], purple, 10, yellow, 10);
             config = 0;
             break;
-
 
     }
     return true;
