@@ -16,11 +16,7 @@ WiFiUDP UDP;
 // On a Trinket or Gemma we suggest changing this to 1:
 #define LED_DATA_IO D3
 
-// How many NeoPixels are attached to the Arduino?
-// #define LED_COUNT  34
-#define LED_COUNT 250
-// #define LED_COUNT  50
-
+#define LED_COUNT NLEDS_POLE
 // NeoPixel brightness, 0 (min) to 255 (max)
 #define BRIGHTNESS 255
 
@@ -137,7 +133,7 @@ bool update_strip(void* pCurrentFx) {
 
     strip.show();
     frame++;
-    // @TODO - pull this update interval from the fx 
+    // @TODO - pull this update interval from the fx
     // structure so the lighting effect object can
     // dictate its own animation speed.
     timer.in(pFct->frame_period_ms, update_strip, pCurrentFx);
@@ -157,7 +153,7 @@ void setup() {
     uint32_t purple = Adafruit_NeoPixel::Color(255, 0, 255, 0);
     uint32_t yellow = Adafruit_NeoPixel::Color(255, 255, 0, 0);
     AlternatingColor(tmpefct, purple, 10, yellow, 10);
-    tmpefct.frame_period_ms = ;
+    tmpefct.frame_period_ms = 33;
 #endif
 
     // use timer.in() instead of timer.every() so each timer function

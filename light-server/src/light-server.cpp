@@ -43,13 +43,13 @@ void hw_wdt_enable() {
     *((volatile uint32_t*)0x60000900) |= 1;  // Hardware WDT ON
 }
 
-static RifleFX riflefx;
+// static RifleFX riflefx;
 static PoleFX polefx;
 
 int send_mcast(uint8_t *pData, size_t len) {
     int ret;
     static const IPAddress mcastaddr = IPAddress(10, 0, 0, 255);
-    static const IPAddress unicast = IPAddress(10, 0, 0, 100);
+    // static const IPAddress unicast = IPAddress(10, 0, 0, 100);
 
     ret = UDP.beginPacketMulticast(mcastaddr, UDP_PORT, WiFi.softAPIP(), 2);
     UDP.write(pData, len);
@@ -95,8 +95,6 @@ bool change_config(void*) {
 }
 
 void setup() {
-    int ret = 0;
-
     setupSerial();
     setupWifi();
     setupUDP();
@@ -120,7 +118,7 @@ void setup() {
 
 }
 
-void loop() { 
+void loop() {
     timer.tick();
 }
 

@@ -1,15 +1,15 @@
 {
 	"folders": [
-		{
-			"path": "light-server"
-		},
-		{
-			"path": "libraries"
-		},
-		{
-			"path": "light-client"
-		}
-	],
+        {
+            "path": "light-client"
+        },
+        {
+            "path": "light-server"
+        },
+        {
+            "path": "libraries"
+        }
+    ],
 	"settings": {
 		"C_Cpp.clang_format_fallbackStyle": "Google",
 		"C_Cpp.clang_format_sortIncludes": true,

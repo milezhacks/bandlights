@@ -8,7 +8,7 @@
 #define PROP_RIFLE ((uint32_t)0xBA9D0000)
 #define PROP_STAFF ((uint32_t)0xBA9D0001)
 
-#define NLEDS_POLE ((uint32_t)228)
+#define NLEDS_POLE ((uint32_t)235)
 #define NLEDS_RIFLE ((uint32_t)50)
 #define NLEDS_MAX (NLEDS_POLE)
 
