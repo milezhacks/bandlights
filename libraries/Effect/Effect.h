@@ -88,12 +88,22 @@ void AllBlue(EffectData<NLED>& e) {
     }
 }
 
+template <size_t NLED>
+void Rainbow(EffectData<NLED>& e) {
+    for (unsigned int i = 0; i < NLED; i++) {  // For each pixel in strip...
+        // Offset pixel hue by an amount to make one full revolution of the
+        // color wheel (range of 65536) along the length of the strip
+        // (strip.numPixels() steps):
+        // uint32_t pixelHue = (i * 65536L / NLED);
+
+        // strip.ColorHSV() can take 1 or 3 arguments: a hue (0 to 65535) or
+        // optionally add saturation and value (brightness) (each 0 to 255).
+        // Here we're using just the three-argument variant, though the
+        // second value (saturation) is a constant 255.
+        e.colors[i] = Adafruit_NeoPixel::ColorHSV(i * 65536L / NLED);
+    }
+    e.size = NLED;
+}
+
 typedef Effects<NLEDS_RIFLE> RifleFX;
 typedef Effects<NLEDS_POLE> PoleFX;
-
-
-#if 0
-class Effect {
-public:
-};
-#endif

@@ -17,8 +17,11 @@ WiFiUDP UDP;
 #define LED_DATA_IO D3
 
 #define LED_COUNT NLEDS_POLE
+
 // NeoPixel brightness, 0 (min) to 255 (max)
-#define BRIGHTNESS 255
+// NOTE: The FET in the voltage regulator of the light
+// poles over-heats above 128!  Adjust with caution!
+#define BRIGHTNESS 128
 
 static const int UDP_PORT = 2000;
 
@@ -142,19 +145,15 @@ bool update_strip(void* pCurrentFx) {
 }
 
 void setup() {
-    pinMode(STATUS, OUTPUT);  // LED pin as output.
+    setupSerial();
+    // setupWifi();
+    // setupUDP();
 
-#if 0
-    for (int i = 0; i < LED_COUNT; i++) {
-        tmpefct.colors[i] = strip.Color(255 - LED_COUNT + i, 0, 0, 0);
-    }
-    tmpefct.size = LED_COUNT;
-#else
-    uint32_t purple = Adafruit_NeoPixel::Color(255, 0, 255, 0);
-    uint32_t yellow = Adafruit_NeoPixel::Color(255, 255, 0, 0);
-    AlternatingColor(tmpefct, purple, 10, yellow, 10);
-    tmpefct.frame_period_ms = 33;
-#endif
+    // uint32_t purple = Adafruit_NeoPixel::Color(255, 0, 255, 0);
+    // uint32_t yellow = Adafruit_NeoPixel::Color(255, 255, 0, 0);
+    // AlternatingColor(tmpefct, purple, 10, yellow, 10);
+    Rainbow(tmpefct);
+    tmpefct.frame_period_ms = 1;
 
     // use timer.in() instead of timer.every() so each timer function
     // can decide what the next interval is.
@@ -167,80 +166,7 @@ void setup() {
     strip.show();  // Turn OFF all pixels ASAP
 
     setupEEPROM();
-    setupUDP();
-    setupSerial();
-    setupWifi();
 }
-
-#if 0
-void loop() {
-    static const int PACKET_LEN = 255;
-    static uint8_t packet[PACKET_LEN];
-    const char* pMode = (const char*)packet;
-    static int mode = 0;
-    timer.tick();
-
-    int packetSize = UDP.parsePacket();
-
-    if (packetSize > 0) {
-        int len = UDP.read(packet, PACKET_LEN);
-        // Serial.print("UDP Read len ");
-        // Serial.println(len);
-
-        if (strncmp(pMode, "aniylw", len) == 0) {
-            mode = 1;
-        }
-        else if (strncmp(pMode, "white", len) == 0) {
-            mode = 2;
-        }
-        else if (strncmp(pMode, "red", len) == 0) {
-            mode = 3;
-        }
-        else if (strncmp(pMode, "green", len) == 0) {
-            mode = 4;
-        }
-        else if (strncmp(pMode, "blue", len) == 0) {
-            mode = 5;
-        }
-        else if (strncmp(pMode, "wob", len) == 0) {
-            mode = 6;
-        }
-        else {
-            mode = 0;
-        }
-        Serial.print("Mode: ");
-        Serial.println(mode);
-    }
-
-    switch (mode) {
-    case 1:
-        // DB23GuardYellowPurple();
-        break;
-    case 2:
-        FullPower();
-        break;
-    case 3:
-        strip.fill(strip.Color(255, 0, 0));
-        break;
-    case 4:
-        strip.fill(strip.Color(0, 255, 0));
-        break;
-    case 5:
-        strip.fill(strip.Color(0, 0, 255));
-        break;
-    case 6:
-        whiteOverRainbow(75, 5);
-        break;
-    }
-    if (WiFi.status() != WL_CONNECTED) {
-        strip.setPixelColor(0, 255, 0, 0);
-    }
-    else {
-        strip.setPixelColor(0, 0, 255, 0);
-    }
-    strip.show();
-}
-#else
 
 void loop() {
     timer.tick();
@@ -265,133 +191,3 @@ void loop() {
     }
 
 }
-#endif
-
-#if 0
-void FullPower() { strip.fill(0); }
-
-// Fill strip pixels one after another with a color. Strip is NOT cleared
-// first; anything there will be covered pixel by pixel. Pass in color
-// (as a single 'packed' 32-bit value, which you can get by calling
-// strip.Color(red, green, blue) as shown in the loop() function above),
-// and a delay time (in milliseconds) between pixels.
-void colorWipe(uint32_t color, int wait) {
-    for (int i = 0; i < strip.numPixels(); i++) {  // For each pixel in strip...
-        strip.setPixelColor(i, color);  //  Set pixel's color (in RAM)
-        strip.show();                   //  Update strip to match
-        delay(wait);                    //  Pause for a moment
-    }
-}
-
-void whiteOverRainbow(int whiteSpeed, int whiteLength) {
-    if (whiteLength >= strip.numPixels()) whiteLength = strip.numPixels() - 1;
-
-    static int head = whiteLength - 1;
-    static int tail = 0;
-    static int loops = 3;
-    static int loopNum = 0;
-    static uint32_t lastTime = millis();
-    static uint32_t firstPixelHue = 0;
-
-    for (int i = 0; i < strip.numPixels(); i++) {  // For each pixel in strip...
-        if (((i >= tail) && (i <= head)) ||        //  If between head & tail...
-            ((tail > head) && ((i >= tail) || (i <= head)))) {
-            strip.setPixelColor(i, strip.Color(255, 255, 255));  // Set white
-        }
-        else {  // else set rainbow
-            int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
-            strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue)));
-        }
-    }
-
-    // There's no delay here, it just runs full-tilt until the timer and
-    // counter combination below runs out.
-
-    firstPixelHue += 40;  // Advance just a little along the color wheel
-
-    if ((millis() - lastTime) > whiteSpeed) {  // Time to update head/tail?
-        if (++head >= strip.numPixels()) {     // Advance head, wrap around
-            head = 0;
-            if (++loopNum >= loops) return;
-        }
-        if (++tail >= strip.numPixels()) {  // Advance tail, wrap around
-            tail = 0;
-        }
-        lastTime = millis();  // Save time of last movement
-    }
-}
-
-void pulseWhite(uint8_t wait) {
-    for (int j = 0; j < 256; j++) {  // Ramp up from 0 to 255
-        // Fill entire strip with white at gamma-corrected brightness level 'j':
-        strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-        strip.show();
-        delay(wait);
-    }
-
-    for (int j = 255; j >= 0; j--) {  // Ramp down from 255 to 0
-        strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-        strip.show();
-        delay(wait);
-    }
-}
-
-void rainbowFade2White(int wait, int rainbowLoops, int whiteLoops) {
-    int fadeVal = 0, fadeMax = 100;
-
-    // Hue of first pixel runs 'rainbowLoops' complete loops through the color
-    // wheel. Color wheel has a range of 65536 but it's OK if we roll over, so
-    // just count from 0 to rainbowLoops*65536, using steps of 256 so we
-    // advance around the wheel at a decent clip.
-    for (uint32_t firstPixelHue = 0; firstPixelHue < rainbowLoops * 65536;
-        firstPixelHue += 256) {
-        for (int i = 0; i < strip.numPixels();
-            i++) {  // For each pixel in strip...
-
-            // Offset pixel hue by an amount to make one full revolution of the
-            // color wheel (range of 65536) along the length of the strip
-            // (strip.numPixels() steps):
-            uint32_t pixelHue =
-                firstPixelHue + (i * 65536L / strip.numPixels());
-
-            // strip.ColorHSV() can take 1 or 3 arguments: a hue (0 to 65535) or
-            // optionally add saturation and value (brightness) (each 0 to 255).
-            // Here we're using just the three-argument variant, though the
-            // second value (saturation) is a constant 255.
-            strip.setPixelColor(
-                i, strip.gamma32(
-                    strip.ColorHSV(pixelHue, 255, 255 * fadeVal / fadeMax)));
-        }
-
-        strip.show();
-        delay(wait);
-
-        if (firstPixelHue < 65536) {           // First loop,
-            if (fadeVal < fadeMax) fadeVal++;  // fade in
-        }
-        else if (firstPixelHue >=
-            ((rainbowLoops - 1) * 65536)) {  // Last loop,
-            if (fadeVal > 0) fadeVal--;             // fade out
-        }
-        else {
-            fadeVal = fadeMax;  // Interim loop, make sure fade is at max
-        }
-    }
-
-    for (int k = 0; k < whiteLoops; k++) {
-        for (int j = 0; j < 256; j++) {  // Ramp up 0 to 255
-            // Fill entire strip with white at gamma-corrected brightness level
-            // 'j':
-            strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-            strip.show();
-        }
-        delay(1000);                      // Pause 1 second
-        for (int j = 255; j >= 0; j--) {  // Ramp down 255 to 0
-            strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-            strip.show();
-        }
-    }
-
-    delay(500);  // Pause 1/2 second
-}
-#endif
